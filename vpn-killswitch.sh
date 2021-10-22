@@ -1,35 +1,32 @@
 #!/bin/bash
-# VPN kill switch
 
-# Activate VPN
+# VPN kill switch script
+# This is a VPN kill switch which will cut out all the connections with UFW (Uncomplicated FireWall)
+# We add exceptions: in our case, we want ssh on port 2222 to be always allowed
 
 # Ports and protocols to be allowed
-VPN_SERVER='jp-tok.prod.surfshark.com_udp' # your VPN server
-PSW_FILE="passwd-file"
-ALLOWED_PORTS=('1198/udp' '1194/udp' '2222/tcp' '8443/udp' '5800:5810/tcp' '5900:5910/tcp')
+ALLOWED_PORTS=('2222/tcp') # example for ssh
 VPN_NET_ADAPTER='tun0' # Usually, this is the default
-LAN_IP='###.###.###.###/24' # If we want to allow traffic inside of the LAN
+PUBLIC_IP='YOUR_PUBLIC_IP' # Static public IP WITHOUT VPN
+SSH_PORT='2222'
 
-echo "Turning on VPN..."
-nmcli connection up ${VPN_SERVER} passwd-file ${PSW_FILE}
+echo "Adding iptables rules..."
+/bin/bash split-tunnel.sh # refer to script
 
-echo "Enabling ports..."
+echo "Adding firewall exceptions..."
 for port in "${ALLOWED_PORTS[@]}"
 do
     ufw allow "${port}"
 done
 
-echo "Blocking all traffic..."
-
-# Disable for now
-#ufw allow in to ${LAN_IP}
-#ufw allow out to ${LAN_IP}
+echo "Allowing traffic on VPN net adapter only"
 ufw allow out on ${VPN_NET_ADAPTER} from any to any
 ufw allow in on ${VPN_NET_ADAPTER} from any to any
 
+echo "Blocking all traffic by default..."
 ufw default deny outgoing
 ufw default deny incoming
 
+echo "Enabling firewall..."
 ufw enable
-
 ufw status
